@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Azumiao Secret</string>
+    <string name="loading_message">秘密基地资源装载中…</string>
+    <string name="loading_progress_format">%1$d%%</string>
+    <string name="gallery_title">阿祖喵的秘密基地</string>
+    <string name="gallery_subtitle">✨ Welcome to my secret base ✨</string>
+    <string name="photo_content_description">Secret base photo %1$d</string>
+</resources>

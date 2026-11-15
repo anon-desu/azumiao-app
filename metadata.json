@@ -1,0 +1,8 @@
+{
+  "name": "Azumiao Secret",
+  "description": "A dreamy pastel photo gallery showcasing Azumiao's secret base with three infinite 3D-tilted photo ribbons and interactive zoom.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
