@@ -5,4 +5,7 @@
     <string name="gallery_title">阿祖喵的秘密基地</string>
     <string name="gallery_subtitle">✨ Welcome to my secret base ✨</string>
     <string name="photo_content_description">Secret base photo %1$d</string>
+    <string name="website_link_label">zu.bocchi.us.kg</string>
+    <string name="website_link_url">https://zu.bocchi.us.kg</string>
+    <string name="website_link_content_description">Visit website zu.bocchi.us.kg</string>
 </resources>
