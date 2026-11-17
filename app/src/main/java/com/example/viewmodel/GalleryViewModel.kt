@@ -1,6 +1,9 @@
 package com.example.viewmodel
 
 import android.app.Application
+import android.content.Context
+import android.graphics.BitmapFactory
+import android.media.ExifInterface
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import coil.imageLoader
@@ -39,16 +42,39 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         loadAndCacheResources()
     }
 
-    private fun loadAndCacheResources() {
-        val rawPhotos = (1..TOTAL_PHOTOS).map { index ->
-            SecretPhoto(
-                id = index,
-                assetUri = "file:///android_asset/images/$index.jpg"
-            )
-        }
+    private fun readAssetAspectRatio(context: Context, index: Int): Float {
+        return runCatching {
+            val path = "images/$index.jpg"
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            context.assets.open(path).use { stream ->
+                BitmapFactory.decodeStream(stream, null, options)
+            }
+            val orientation = context.assets.open(path).use { stream ->
+                ExifInterface(stream).getAttributeInt(
+                    ExifInterface.TAG_ORIENTATION,
+                    ExifInterface.ORIENTATION_NORMAL
+                )
+            }
+            val swap = orientation == ExifInterface.ORIENTATION_ROTATE_90 ||
+                orientation == ExifInterface.ORIENTATION_ROTATE_270 ||
+                orientation == ExifInterface.ORIENTATION_TRANSPOSE ||
+                orientation == ExifInterface.ORIENTATION_TRANSVERSE
+            val width = if (swap) options.outHeight else options.outWidth
+            val height = if (swap) options.outWidth else options.outHeight
+            if (width > 0 && height > 0) width.toFloat() / height.toFloat() else 1f
+        }.getOrDefault(1f)
+    }
 
+    private fun loadAndCacheResources() {
         viewModelScope.launch(Dispatchers.IO) {
             val context = getApplication<Application>()
+            val rawPhotos = (1..TOTAL_PHOTOS).map { index ->
+                SecretPhoto(
+                    id = index,
+                    assetUri = "file:///android_asset/images/$index.jpg",
+                    aspectRatio = readAssetAspectRatio(context, index)
+                )
+            }
             val imageLoader = context.imageLoader
             val completedCount = AtomicInteger(0)
 

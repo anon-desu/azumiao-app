@@ -1,6 +1,16 @@
 package com.example.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -28,22 +38,35 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
 import com.example.R
 import com.example.model.GalleryUiState
+import com.example.model.ScrollDirection
+import com.example.model.SecretPhoto
 import com.example.ui.components.AnimatedGradientBackground
 import com.example.ui.components.FloatingHeader
 import com.example.ui.components.LoadingOverlay
@@ -61,6 +84,8 @@ fun SecretBaseScreen(
     val loadingState = uiState as? GalleryUiState.Loading
     val isLoading = loadingState != null
     val selectedCardKey = readyState?.selectedCardKey
+    val selectedPhoto = readyState?.selectedPhoto
+    val selectedDirection = readyState?.selectedRowDirection
 
     BackHandler(enabled = selectedCardKey != null) {
         viewModel.clearSelection()
@@ -155,11 +180,119 @@ fun SecretBaseScreen(
                     }
                 }
             }
+
+            if (selectedCardKey != null && selectedPhoto != null) {
+                ExpandedPhotoOverlay(
+                    cardKey = selectedCardKey,
+                    photo = selectedPhoto,
+                    initialTiltAngle = when (selectedDirection) {
+                        ScrollDirection.BACKWARD -> 18f
+                        else -> -18f
+                    },
+                    onDismiss = viewModel::clearSelection,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .zIndex(1000f)
+                )
+            }
         }
 
         LoadingOverlay(
             visible = isLoading,
             progressPercent = loadingState?.progressPercent ?: 100
         )
+    }
+}
+
+@Composable
+private fun ExpandedPhotoOverlay(
+    cardKey: String,
+    photo: SecretPhoto,
+    initialTiltAngle: Float,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+
+    BoxWithConstraints(
+        modifier = modifier
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        val availWidth = maxWidth
+        val availHeight = maxHeight
+
+        AnimatedContent(
+            targetState = cardKey to photo,
+            transitionSpec = {
+                (fadeIn(animationSpec = tween(260)) +
+                    scaleIn(
+                        initialScale = 0.78f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    )).togetherWith(
+                    fadeOut(animationSpec = tween(180)) +
+                        scaleOut(targetScale = 0.85f, animationSpec = tween(180))
+                )
+            },
+            label = "expanded_photo_transition"
+        ) { (activeKey, activePhoto) ->
+            var flipped by remember(activeKey) { mutableStateOf(false) }
+            LaunchedEffect(activeKey) {
+                flipped = true
+            }
+            val rotationYAnim by animateFloatAsState(
+                targetValue = if (flipped) 0f else initialTiltAngle,
+                animationSpec = tween(durationMillis = 360),
+                label = "expanded_flip_y"
+            )
+
+            val ratio = activePhoto.aspectRatio.coerceIn(0.25f, 4f)
+            val containerRatio = availWidth.value / availHeight.value.coerceAtLeast(1f)
+            val (targetWidth, targetHeight) = if (containerRatio > ratio) {
+                (availHeight * ratio) to availHeight
+            } else {
+                availWidth to (availWidth / ratio)
+            }
+
+            val imageRequest = remember(activePhoto.assetUri) {
+                ImageRequest.Builder(context)
+                    .data(activePhoto.assetUri)
+                    .memoryCachePolicy(CachePolicy.ENABLED)
+                    .crossfade(false)
+                    .build()
+            }
+
+            val cardInteraction = remember { MutableInteractionSource() }
+            val shape = RoundedCornerShape(18.dp)
+
+            Surface(
+                shape = shape,
+                color = Color.Transparent,
+                shadowElevation = 24.dp,
+                modifier = Modifier
+                    .size(width = targetWidth, height = targetHeight)
+                    .graphicsLayer {
+                        rotationY = rotationYAnim
+                        cameraDistance = 4.5f
+                    }
+                    .clickable(
+                        interactionSource = cardInteraction,
+                        indication = null,
+                        onClick = onDismiss
+                    )
+                    .testTag("expanded_photo_overlay")
+            ) {
+                AsyncImage(
+                    model = imageRequest,
+                    contentDescription = stringResource(R.string.photo_content_description, activePhoto.id),
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
     }
 }

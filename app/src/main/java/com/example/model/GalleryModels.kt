@@ -4,7 +4,8 @@ import kotlin.random.Random
 
 data class SecretPhoto(
     val id: Int,
-    val assetUri: String
+    val assetUri: String,
+    val aspectRatio: Float = 1f
 )
 
 enum class ScrollDirection {
@@ -24,7 +25,27 @@ sealed interface GalleryUiState {
     data class Ready(
         val rows: List<GalleryRowData>,
         val selectedCardKey: String? = null
-    ) : GalleryUiState
+    ) : GalleryUiState {
+        val selectedPhoto: SecretPhoto?
+            get() {
+                val key = selectedCardKey ?: return null
+                return rows.firstNotNullOfOrNull { row ->
+                    val prefix = "row_${row.rowIndex}_"
+                    if (key.startsWith(prefix)) {
+                        val id = key.removePrefix(prefix).toIntOrNull()
+                        row.photos.firstOrNull { it.id == id }
+                    } else {
+                        null
+                    }
+                }
+            }
+
+        val selectedRowDirection: ScrollDirection?
+            get() {
+                val key = selectedCardKey ?: return null
+                return rows.firstOrNull { key.startsWith("row_${it.rowIndex}_") }?.direction
+            }
+    }
 }
 
 /**

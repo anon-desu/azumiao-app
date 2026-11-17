@@ -133,7 +133,8 @@ fun PhotoRibbonRow(
 
             if (wrappedCenterX in leftCutoff..rightCutoff) {
                 key(cardKey) {
-                    val isActive = activeCardKey == cardKey
+                    val isSelected = selectedInThisRow == cardKey
+                    val isHovered = hoveredCardKey == cardKey
                     RibbonPhotoCard(
                         photo = photo,
                         cardKey = cardKey,
@@ -143,7 +144,8 @@ fun PhotoRibbonRow(
                         expandedWidth = expandedCardWidth,
                         restTiltAngle = restTiltAngle,
                         isCompact = isCompact,
-                        isActive = isActive,
+                        isHovered = isHovered,
+                        isSelected = isSelected,
                         onHoverChanged = { hovered ->
                             hoveredCardKey = if (hovered) {
                                 cardKey
@@ -174,11 +176,13 @@ private fun RibbonPhotoCard(
     expandedWidth: Dp,
     restTiltAngle: Float,
     isCompact: Boolean,
-    isActive: Boolean,
+    isHovered: Boolean,
+    isSelected: Boolean,
     onHoverChanged: (Boolean) -> Unit,
     onTapped: () -> Unit
 ) {
-    val targetWidth = if (isActive) expandedWidth else baseSize
+    val isActive = isHovered || isSelected
+    val targetWidth = if (isHovered && !isSelected) expandedWidth else baseSize
     val animatedWidth by animateDpAsState(
         targetValue = targetWidth,
         animationSpec = spring(
@@ -188,7 +192,7 @@ private fun RibbonPhotoCard(
         label = "card_width"
     )
     val animatedScale by animateFloatAsState(
-        targetValue = if (isActive) (if (isCompact) 1.08f else 1.1f) else 1f,
+        targetValue = if (isHovered && !isSelected) (if (isCompact) 1.08f else 1.1f) else 1f,
         animationSpec = tween(durationMillis = 420),
         label = "card_scale"
     )
