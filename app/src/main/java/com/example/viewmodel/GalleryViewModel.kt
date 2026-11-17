@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import coil.imageLoader
 import coil.request.CachePolicy
 import coil.request.ImageRequest
+import com.example.model.EASTER_EGG_CARD_KEY
 import com.example.model.GalleryRowData
 import com.example.model.GalleryUiState
 import com.example.model.ScrollDirection
@@ -30,6 +31,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     companion object {
         private const val TOTAL_PHOTOS = 25
+        private const val EASTER_EGG_PHOTO_ID = 999
         private const val POST_LOAD_SETTLE_DELAY_MS = 500L
         private const val ROW_2_OFFSET = 8
         private const val ROW_3_OFFSET = 16
@@ -42,14 +44,13 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         loadAndCacheResources()
     }
 
-    private fun readAssetAspectRatio(context: Context, index: Int): Float {
+    private fun readAssetAspectRatio(context: Context, assetPath: String): Float {
         return runCatching {
-            val path = "images/$index.jpg"
             val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            context.assets.open(path).use { stream ->
+            context.assets.open(assetPath).use { stream ->
                 BitmapFactory.decodeStream(stream, null, options)
             }
-            val orientation = context.assets.open(path).use { stream ->
+            val orientation = context.assets.open(assetPath).use { stream ->
                 ExifInterface(stream).getAttributeInt(
                     ExifInterface.TAG_ORIENTATION,
                     ExifInterface.ORIENTATION_NORMAL
@@ -69,16 +70,24 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch(Dispatchers.IO) {
             val context = getApplication<Application>()
             val rawPhotos = (1..TOTAL_PHOTOS).map { index ->
+                val relativePath = "images/$index.jpg"
                 SecretPhoto(
                     id = index,
-                    assetUri = "file:///android_asset/images/$index.jpg",
-                    aspectRatio = readAssetAspectRatio(context, index)
+                    assetUri = "file:///android_asset/$relativePath",
+                    aspectRatio = readAssetAspectRatio(context, relativePath)
                 )
             }
+            val easterEggPath = "images/easter_egg.jpg"
+            val easterEggPhoto = SecretPhoto(
+                id = EASTER_EGG_PHOTO_ID,
+                assetUri = "file:///android_asset/$easterEggPath",
+                aspectRatio = readAssetAspectRatio(context, easterEggPath)
+            )
+
             val imageLoader = context.imageLoader
             val completedCount = AtomicInteger(0)
 
-            rawPhotos.map { photo ->
+            (rawPhotos + easterEggPhoto).map { photo ->
                 async {
                     runCatching {
                         val request = ImageRequest.Builder(context)
@@ -88,9 +97,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                             .build()
                         imageLoader.execute(request)
                     }
-                    val done = completedCount.incrementAndGet()
-                    val percent = ((done.toFloat() / TOTAL_PHOTOS) * 100f).toInt().coerceIn(0, 100)
-                    _uiState.value = GalleryUiState.Loading(progressPercent = percent)
+                    if (photo.id <= TOTAL_PHOTOS) {
+                        val done = completedCount.incrementAndGet()
+                        val percent = ((done.toFloat() / TOTAL_PHOTOS) * 100f).toInt().coerceIn(0, 100)
+                        _uiState.value = GalleryUiState.Loading(progressPercent = percent)
+                    }
                 }
             }.awaitAll()
 
@@ -115,7 +126,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 )
             )
 
-            _uiState.value = GalleryUiState.Ready(rows = rows)
+            _uiState.value = GalleryUiState.Ready(
+                rows = rows,
+                easterEggPhoto = easterEggPhoto
+            )
         }
     }
 
@@ -124,6 +138,16 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             if (current is GalleryUiState.Ready) {
                 val nextKey = if (current.selectedCardKey == cardKey) null else cardKey
                 current.copy(selectedCardKey = nextKey)
+            } else {
+                current
+            }
+        }
+    }
+
+    fun onEasterEggTriggered() {
+        _uiState.update { current ->
+            if (current is GalleryUiState.Ready) {
+                current.copy(selectedCardKey = EASTER_EGG_CARD_KEY)
             } else {
                 current
             }

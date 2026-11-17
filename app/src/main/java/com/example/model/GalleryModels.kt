@@ -19,16 +19,20 @@ data class GalleryRowData(
     val photos: List<SecretPhoto>
 )
 
+const val EASTER_EGG_CARD_KEY = "easter_egg_azumiao"
+
 sealed interface GalleryUiState {
     data class Loading(val progressPercent: Int) : GalleryUiState
 
     data class Ready(
         val rows: List<GalleryRowData>,
+        val easterEggPhoto: SecretPhoto,
         val selectedCardKey: String? = null
     ) : GalleryUiState {
         val selectedPhoto: SecretPhoto?
             get() {
                 val key = selectedCardKey ?: return null
+                if (key == EASTER_EGG_CARD_KEY) return easterEggPhoto
                 return rows.firstNotNullOfOrNull { row ->
                     val prefix = "row_${row.rowIndex}_"
                     if (key.startsWith(prefix)) {

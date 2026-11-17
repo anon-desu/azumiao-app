@@ -68,7 +68,7 @@ fun PhotoRibbonRow(
     val rowPrefix = "row_${rowData.rowIndex}_"
     val selectedInThisRow = selectedCardKey?.takeIf { it.startsWith(rowPrefix) }
     val activeCardKey = selectedInThisRow ?: hoveredCardKey
-    val isRowPaused = activeCardKey != null
+    val isRowPaused = hoveredCardKey != null
 
     val density = LocalDensity.current
     val baseSizePx = with(density) { baseCardSize.toPx() }

@@ -126,7 +126,10 @@ fun SecretBaseScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    FloatingHeader(isCompact = isCompact)
+                    FloatingHeader(
+                        isCompact = isCompact,
+                        onEasterEggTriggered = viewModel::onEasterEggTriggered
+                    )
 
                     Spacer(modifier = Modifier.height(headerBottomSpacing))
 
@@ -187,7 +190,8 @@ fun SecretBaseScreen(
                     photo = selectedPhoto,
                     initialTiltAngle = when (selectedDirection) {
                         ScrollDirection.BACKWARD -> 18f
-                        else -> -18f
+                        ScrollDirection.FORWARD -> -18f
+                        null -> 0f
                     },
                     onDismiss = viewModel::clearSelection,
                     modifier = Modifier
@@ -216,12 +220,15 @@ private fun ExpandedPhotoOverlay(
 
     BoxWithConstraints(
         modifier = modifier
-            .windowInsetsPadding(WindowInsets.safeDrawing)
-            .padding(16.dp),
+            .windowInsetsPadding(WindowInsets.safeDrawing),
         contentAlignment = Alignment.Center
     ) {
-        val availWidth = maxWidth
-        val availHeight = maxHeight
+        val isCompact = maxWidth < 768.dp
+        val ribbonCardSize = if (isCompact) 120.dp else 200.dp
+        // Leave half a ribbon card (1/2 photo width) visible on BOTH the left and right borders
+        // (2 * 0.5 * ribbonCardSize = ribbonCardSize total horizontal margin)
+        val availWidth = (maxWidth - ribbonCardSize).coerceAtLeast(120.dp)
+        val availHeight = (maxHeight - 160.dp).coerceAtLeast(180.dp)
 
         AnimatedContent(
             targetState = cardKey to photo,
