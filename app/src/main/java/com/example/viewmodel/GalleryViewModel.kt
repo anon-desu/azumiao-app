@@ -30,11 +30,11 @@ import java.util.concurrent.atomic.AtomicInteger
 class GalleryViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
-        private const val TOTAL_PHOTOS = 25
+        private const val TOTAL_PHOTOS = 30
         private const val EASTER_EGG_PHOTO_ID = 999
         private const val POST_LOAD_SETTLE_DELAY_MS = 500L
-        private const val ROW_2_OFFSET = 8
-        private const val ROW_3_OFFSET = 16
+        private const val ROW_2_OFFSET = 10
+        private const val ROW_3_OFFSET = 20
     }
 
     private val _uiState = MutableStateFlow<GalleryUiState>(GalleryUiState.Loading(progressPercent = 0))
